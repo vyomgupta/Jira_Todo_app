@@ -1,340 +1,205 @@
-let createBtn = document.querySelector(".create");
-let body = document.querySelector("body");
-let grid = document.querySelector(".grid");
-let color = ["pink", "green", "blue", "black"];
+let addBtn = document.querySelector(".add-btn");
+let removeBtn = document.querySelector(".remove-btn");
+let modalCont = document.querySelector(".modal-cont");
+let mainCont = document.querySelector(".main-cont");
+let textareaCont = document.querySelector(".textarea-cont");
+let allPriorityColors = document.querySelectorAll(".priority-color");
+let toolBoxColors = document.querySelectorAll(".color");
 
+let colors = ["lightpink", "lightblue", "lightgreen", "black"];
+let modalPriorityColor = colors[colors.length - 1];
 
-let allFilersChildern = document.querySelectorAll(".filter div");
-for(let i = 0; i < allFilersChildern.length; i++){
-    let par = allFilersChildern[i].parentElement;
+let addFlag = false;
+let removeFlag = false;
 
-    par.addEventListener("click", (e) => {
-        let parentDiv = e.currentTarget.children[0];
-        console.log(parentDiv.classList);
-        for(let j = 0; j < allFilersChildern.length; j++){
-            let selcetedPar = allFilersChildern[j].parentElement;
-            if(selcetedPar.classList.contains("selectedFilter")){
-                selcetedPar.classList.remove("selectedFilter");
-            }
-        }
-        if(parentDiv.classList.contains("color-selected")){
-            parentDiv.classList.remove("color-selected");
-            par.classList.remove("selectedFilter");
-            loadTasks();
-            return;
-        }
-        else{
-            parentDiv.classList.add("color-selected");
-            // parentDiv.classList.add("selected");
-            par.classList.add("selectedFilter");
-            // console.log(parentDiv.target)
-        }
-        console.log(parentDiv.classList[0]);
-        let currentFilerColor = parentDiv.classList[0];
-        loadTasks(currentFilerColor)
+let lockClass = "fa-lock";
+let unlockClass = "fa-lock-open";
+
+let ticketsArr = [];
+
+if (localStorage.getItem("jira_tickets")) {
+    // Retrieve and display tickets
+    ticketsArr = JSON.parse(localStorage.getItem("jira_tickets"));
+    ticketsArr.forEach((ticketObj) => {
+        createTicket(ticketObj.ticketColor, ticketObj.ticketTask, ticketObj.ticketID);
     })
 }
 
+for (let i = 0; i < toolBoxColors.length; i++) {
+    toolBoxColors[i].addEventListener("click", (e) => {
+        let currentToolBoxColor = toolBoxColors[i].classList[0];
 
-let deletBtn = document.querySelector(".delete");
-let materialIcons = document.querySelector(".material-icons");
-let deleteMode = false;
-
-if(localStorage.getItem("AllTickets") == undefined){
-    let allTickets = {};
-    allTickets = JSON.stringify(allTickets);
-    localStorage.setItem("AllTickets", allTickets);
-}
-// when we first open the page then it will be run for first time
-loadTasks();
-
-deletBtn.addEventListener("click", (e) => {
-    console.log(e.currentTarget.classList);
-    if(e.currentTarget.classList.contains("delete-selected")){
-        e.currentTarget.classList.remove("delete-selected");
-        deleteMode = false;
-    }
-    else{
-        e.currentTarget.classList.add("delete-selected");
-        deleteMode = true;
-    }
-});
-
-
-createBtn.addEventListener("click",()=>{
-    // delete btn
-    deletBtn.classList.remove("delete-selected");
-    deleteMode = false;
-
-    let isModalPresent = document.querySelector(".modal");
-    if(isModalPresent != null){
-        return;
-    }
-
-    let div = document.createElement("div");
-    div.classList.add("modal");
-    div.innerHTML = `<div class="text-section">
-                        <div class="task-inner-cointainer" contenteditable="true"></div>
-                    </div>
-                    <div class="modal-priority-section">
-                         <div class="priority-inner-container">
-                            <div class="modal-priority pink"></div>
-                            <div class="modal-priority green"></div>
-                            <div class="modal-priority blue"></div>
-                            <div class="modal-priority black selected"></div>
-                        </div>
-                    </div>`
-
-    let allModalPriority = div.querySelectorAll(".modal-priority");
-    let ticketColour = "black";
-
-    for(let i = 0; i < allModalPriority.length; i++){
-        allModalPriority[i].addEventListener('click', (e)=>{
-            for(let j = 0; j < allModalPriority.length; j++){
-                allModalPriority[j].classList.remove("selected");
-            }
-            e.target.classList.add("selected");
-            ticketColour = e.target.classList[1];
-            // console.log(ticketColour);
+        let filteredTickets = ticketsArr.filter((ticketObj, idx) => {
+            return currentToolBoxColor === ticketObj.ticketColor;
         })
-    }
 
-    let taskInnerCointainer = div.querySelector(".task-inner-cointainer");
-    taskInnerCointainer.addEventListener("keydown", (e)=>{
-        // console.log(e.key);
-        // console.log(e);
-        if(e.key == "Enter"){
-            let id = uid();
-            let task = e.target.innerText;
-
-            // LOCAL STORAGE
-            //STEP 1 -> get all tickets from local storage
-            let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-
-            // STEP 2 -> update the new ticket into an object
-            let ticketOBJ = {
-                color : ticketColour,
-                taskValue : task,
-            }
-            allTickets[id] = ticketOBJ;
-
-            // STEP 3 -> update the current AllTicket into local Storage
-            allTickets = JSON.stringify(allTickets);
-            localStorage.setItem("AllTickets", allTickets);
-
-            let ticketDiv = document.createElement("div");
-            ticketDiv.classList.add("ticket");
-            ticketDiv.setAttribute("data-id", id);
-            
-            ticketDiv.innerHTML = ` <div data-id = "${id}" class="ticket-color ${ticketColour}"></div>
-                                    <div class="ticket-id">
-                                        #${id}
-                                    </div>
-                                    <div data-id = "${id}" class="actual-task" contenteditable = "true" >       ${task}
-                                    </div>`
-
-            grid.append(ticketDiv);
-            div.remove();   
-            
-            
-
-            let ticketcolor = ticketDiv.querySelector(".ticket-color");
-            let actualTaskDiv = ticketDiv.querySelector(".actual-task");
-
-            actualTaskDiv.addEventListener("input", (e) => {
-                let updatedTask = e.currentTarget.innerText;
-                let currentTicketId = e.currentTarget.getAttribute("data-id");
-                // =========================  create and update the local storage  =========================
-                // LOCAL STORAGE
-                //STEP 1 -> get all tickets from local storage
-                let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-
-                // STEP 2 -> update the new ticket into an object
-                allTickets[currentTicketId].taskValue = updatedTask;
-
-                // STEP 3 -> update the current AllTicket into local Storage
-                allTickets = JSON.stringify(allTickets);
-                localStorage.setItem("AllTickets", allTickets);
-
-                // ===============================================================================
-
-            })
-
-            ticketcolor.addEventListener("click", (e)=>{
-                let currentTicketId = e.currentTarget.getAttribute("data-id");
-                // console.log(currentTicketId);
-                let currColor = e.target.classList[1];
-                let index = color.indexOf(currColor);
-                // for(let i = 0; i < 4; i++){
-                //     if(color[i] == currColor){
-                //         index = i;
-                //     }
-                // }
-                index++;
-                index %= 4;
-                let newColor = color[index];
-
-                // =========================  create and update the local storage  =========================
-                // LOCAL STORAGE
-                //STEP 1 -> get all tickets from local storage
-                let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-
-                // STEP 2 -> update the new ticket into an object
-                let ticketOBJ = {
-                    color : newColor,
-                    taskValue : task,
-                }
-                allTickets[currentTicketId] = ticketOBJ;
-
-                // STEP 3 -> update the current AllTicket into local Storage
-                allTickets = JSON.stringify(allTickets);
-                localStorage.setItem("AllTickets", allTickets);
-
-                // ===============================================================================
-                
-                e.target.classList.remove(currColor);
-                e.target.classList.add(newColor);
-            })
-
-            ticketDiv.addEventListener("click", (e) =>{
-                if(deleteMode){
-                    let currentTicketId = e.currentTarget.getAttribute("data-id");
-                    e.currentTarget.remove();
-                    // =======================  create and update the local storage =========================
-                    // LOCAL STORAGE
-                    //STEP 1 -> get all tickets from local storage
-                    let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-
-                    // STEP 2 -> update the new ticket into an object
-                    delete allTickets[currentTicketId];
-
-                    // STEP 3 -> update the current AllTicket into local Storage
-                    allTickets = JSON.stringify(allTickets);
-                    localStorage.setItem("AllTickets", allTickets);
-                }
-            })
-
+        // Remove previous tickets
+        let allTicketsCont = document.querySelectorAll(".ticket-cont");
+        for (let i = 0; i < allTicketsCont.length; i++) {
+            allTicketsCont[i].remove();
         }
-        else if(e.key == "Escape"){
-            div.remove();
-        }
+        // Display new filtered tickets
+        filteredTickets.forEach((ticketObj, idx) => {
+            createTicket(ticketObj.ticketColor, ticketObj.ticketTask, ticketObj.ticketID);
+        })
     })
 
-    body.append(div);
+    toolBoxColors[i].addEventListener("dblclick", (e) => {
+        // Remove previous tickets
+        let allTicketsCont = document.querySelectorAll(".ticket-cont");
+        for (let i = 0; i < allTicketsCont.length; i++) {
+            allTicketsCont[i].remove();
+        }
+
+        ticketsArr.forEach((ticketObj, idx) => {
+            createTicket(ticketObj.ticketColor, ticketObj.ticketTask, ticketObj.ticketID);
+        })
+    })
+}
+
+// Listener for modal priority coloring
+allPriorityColors.forEach((colorElem, idx) => {
+    colorElem.addEventListener("click", (e) => {
+        allPriorityColors.forEach((priorityColorElem, idx) => {
+            priorityColorElem.classList.remove("border");
+        })
+        colorElem.classList.add("border");
+
+        modalPriorityColor = colorElem.classList[0];
+    })
 })
 
-function loadTasks(colorOfTic){
+addBtn.addEventListener("click", (e) => {
+    // Display Modal
+    // Generate ticket
 
-    let ticketsOnUI = document.querySelectorAll(".ticket");
-    for(let i = 0; i < ticketsOnUI.length; i++){
-        ticketsOnUI[i].remove();
+    // AddFlag, true -> Modal Display
+    // AddFlag, False -> Modal None
+    addFlag = !addFlag;
+    if (addFlag) {
+        modalCont.style.display = "flex";
     }
+    else {
+        modalCont.style.display = "none";
+    }
+})
+removeBtn.addEventListener("click", (e) => {
+    removeFlag = !removeFlag;
+    console.log(removeFlag);
+})
 
-    // 1 -> fetch all ticket data
-    let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-    // console.log(allTickets);
-    
-    for(x in allTickets){
-        let currentTicketID = x;
-        let currentTicketOBJ = allTickets[x];
 
-        if(colorOfTic && colorOfTic != currentTicketOBJ.color){
-            continue;
+modalCont.addEventListener("keydown", (e) => {
+    let key = e.key;
+    if (key === "Shift") {
+        createTicket(modalPriorityColor, textareaCont.value);
+        addFlag = false;
+        setModalToDefault();
+    }
+})
+
+function createTicket(ticketColor, ticketTask, ticketID) {
+    let id = ticketID || shortid();
+    let ticketCont = document.createElement("div");
+    ticketCont.setAttribute("class", "ticket-cont");
+    ticketCont.innerHTML = `
+        <div class="ticket-color ${ticketColor}"></div>
+        <div class="ticket-id">#${id}</div>
+        <div class="task-area">${ticketTask}</div>
+        <div class="ticket-lock">
+            <i class="fas fa-lock"></i>
+        </div>
+    `;
+    mainCont.appendChild(ticketCont);
+
+    // Create object of ticket and add to array
+    if (!ticketID) {
+        ticketsArr.push({ ticketColor, ticketTask, ticketID: id });
+        localStorage.setItem("jira_tickets", JSON.stringify(ticketsArr));
+    }
+    console.log(ticketsArr);
+    handleRemoval(ticketCont, id);
+    handleLock(ticketCont, id);
+    handleColor(ticketCont, id);
+}
+
+function handleRemoval(ticket, id) {
+    // removeFlag -> true -> remove
+    ticket.addEventListener("click", (e) => {
+        if (!removeFlag) return;
+
+        let idx = getTikcetIdx(id);
+
+        // DB removal
+        ticketsArr.splice(idx, 1);
+        let strTicketsArr = JSON.stringify(ticketsArr);
+        localStorage.setItem("jira_tickets", strTicketsArr);
+        
+        ticket.remove(); //UI removal
+    })
+}
+
+function handleLock(ticket, id) {
+    let ticketLockElem = ticket.querySelector(".ticket-lock");
+    let ticketLock = ticketLockElem.children[0];
+    let ticketTaskArea = ticket.querySelector(".task-area");
+    ticketLock.addEventListener("click", (e) => {
+        let ticketIdx = getTikcetIdx(id);
+
+        if (ticketLock.classList.contains(lockClass)) {
+            ticketLock.classList.remove(lockClass);
+            ticketLock.classList.add(unlockClass);
+            ticketTaskArea.setAttribute("contenteditable", "true");
+        }
+        else {
+            ticketLock.classList.remove(unlockClass);
+            ticketLock.classList.add(lockClass);
+            ticketTaskArea.setAttribute("contenteditable", "false");
         }
 
-        // 2 -> create ticket UI for each Ticket
-        let ticketDiv = document.createElement("div");
-        ticketDiv.classList.add("ticket");
-        ticketDiv.setAttribute("data-id", currentTicketID);
-        
-        ticketDiv.innerHTML = ` <div data-id = "${currentTicketID}" class="ticket-color ${currentTicketOBJ.color}"></div>
-                                <div class="ticket-id">
-                                    #${currentTicketID}
-                                </div>
-                                <div data-id = "${currentTicketID}" class="actual-task" contenteditable = "true" >       ${currentTicketOBJ.taskValue}
-                                </div>`
+        // Modify data in localStorage (Ticket Task)
+        ticketsArr[ticketIdx].ticketTask = ticketTaskArea.innerText;
+        localStorage.setItem("jira_tickets", JSON.stringify(ticketsArr));
+    })
+}
 
-        // 3 -> Attach required listners
-        let ticketcolor = ticketDiv.querySelector(".ticket-color");
-        let actualTaskDiv = ticketDiv.querySelector(".actual-task");
-        
-        actualTaskDiv.addEventListener("input", (e) => {
-            let updatedTask = e.currentTarget.innerText;
-            let currentTicketId = e.currentTarget.getAttribute("data-id");
-            // =========================  create and update the local storage  =========================
-            // LOCAL STORAGE
-            //STEP 1 -> get all tickets from local storage
-            let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
+function handleColor(ticket, id) {
+    let ticketColor = ticket.querySelector(".ticket-color");
+    ticketColor.addEventListener("click", (e) => {
+        // Get ticketIdx from the tickets array
+        let ticketIdx = getTikcetIdx(id);
 
-            // STEP 2 -> update the new ticket into an object
-            allTickets[currentTicketId].taskValue = updatedTask;
-
-            // STEP 3 -> update the current AllTicket into local Storage
-            allTickets = JSON.stringify(allTickets);
-            localStorage.setItem("AllTickets", allTickets);
-
-            // ===============================================================================
-
+        let currentTicketColor = ticketColor.classList[1];
+        // Get ticket color idx
+        let currentTicketColorIdx = colors.findIndex((color) => {
+            return currentTicketColor === color;
         })
+        console.log(currentTicketColor, currentTicketColorIdx);
+        currentTicketColorIdx++;
+        let newTicketColorIdx = currentTicketColorIdx % colors.length;
+        let newTicketColor = colors[newTicketColorIdx];
+        ticketColor.classList.remove(currentTicketColor);
+        ticketColor.classList.add(newTicketColor);
 
-        ticketcolor.addEventListener("click", (e)=>{
-            let currentTicketId = e.currentTarget.getAttribute("data-id");
-            // console.log(currentTicketId);
-            let currColor = e.target.classList[1];
-            console.log(color.indexOf(currColor));
-            let index = color.indexOf(currColor);
-            // for(let i = 0; i < 4; i++){
-            //     if(color[i] == currColor){
-            //         index = i;
-            //     }
-            // }
-            index++;
-            index %= 4;
-            let newColor = color[index];
+        // Modify data in localStorage (priority color change)
+        ticketsArr[ticketIdx].ticketColor = newTicketColor;
+        localStorage.setItem("jira_tickets", JSON.stringify(ticketsArr));
+    })
+}
 
-            // =========================  create and update the local storage  =========================
-            // LOCAL STORAGE
-            //STEP 1 -> get all tickets from local storage
-            let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
+function getTikcetIdx(id) {
+    let ticketIdx = ticketsArr.findIndex((ticketObj) => {
+        return ticketObj.ticketID === id;
+    })
+    return ticketIdx;
+}
 
-            // STEP 2 -> update the new ticket into an object
-            let ticketOBJ = {
-                color : newColor,
-                taskValue : currentTicketOBJ.taskValue,
-            }
-            allTickets[currentTicketId] = ticketOBJ;
-
-            // STEP 3 -> update the current AllTicket into local Storage
-            allTickets = JSON.stringify(allTickets);
-            localStorage.setItem("AllTickets", allTickets);
-
-            // ===============================================================================
-            
-            e.target.classList.remove(currColor);
-            e.target.classList.add(newColor);
-        })
-
-        ticketDiv.addEventListener("click", (e) =>{
-            if(deleteMode){
-                let currentTicketId = e.currentTarget.getAttribute("data-id");
-                e.currentTarget.remove();
-                // =======================  create and update the local storage =========================
-                // LOCAL STORAGE
-                //STEP 1 -> get all tickets from local storage
-                let allTickets = JSON.parse(localStorage.getItem("AllTickets"));
-
-                // STEP 2 -> update the new ticket into an object
-                delete allTickets[currentTicketId];
-
-                // STEP 3 -> update the current AllTicket into local Storage
-                allTickets = JSON.stringify(allTickets);
-                localStorage.setItem("AllTickets", allTickets);
-            }
-        })
-
-        // 4 -> Add tickets in the grid section of UI.
-        grid.append(ticketDiv);
-
-    }
-
+function setModalToDefault() {
+    modalCont.style.display = "none";
+    textareaCont.value = "";
+    modalPriorityColor = colors[colors.length - 1];
+    allPriorityColors.forEach((priorityColorElem, idx) => {
+        priorityColorElem.classList.remove("border");
+    })
+    allPriorityColors[allPriorityColors.length - 1].classList.add("border");
 }
